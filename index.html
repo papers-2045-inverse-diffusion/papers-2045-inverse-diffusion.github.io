@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SDS Generation Results</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f8f8f8;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+        }
+
+        .res-button {
+            padding: 8px 16px;
+            margin-right: 10px;
+            font-size: 14px;
+            border: none;
+            border-radius: 20px;
+            background-color: #ddd;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .res-button.active {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .panel {
+            background-color: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .panel img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            transition: opacity 0.2s ease;
+        }
+
+        .prompt {
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>SDS Generation Results</h1>
+
+    <!-- Top Row for Best Results -->
+    <h2>Highlights (128 curves)</h2>
+    <div class="grid-container" id="top-row">
+        <!-- Best images go here -->
+    </div>
+
+    <div class="controls" id="resolution-buttons">
+        <button class="res-button active" data-res="128">128 curves</button>
+        <button class="res-button" data-res="64">64 curves</button>
+        <button class="res-button" data-res="32">32 curves</button>
+        <button class="res-button" data-res="Initial">Initial Render</button>
+
+    </div>
+
+    <div class="grid-container" id="grid-container">
+        <!-- Main grid will be inserted here -->
+    </div>
+
+    <script>
+        let prompts = [];
+
+        async function loadPrompts() {
+            const response = await fetch('txt_prompts.txt');
+            const text = await response.text();
+            prompts = text.trim().split('\n');
+            renderTopRow();
+            renderGrid("64");
+        }
+
+        function renderTopRow() {
+            const container = document.getElementById("top-row");
+            container.innerHTML = '';
+
+            // List of best {idx} for 128/_{idx}.png files
+            const topBestIndices = [0,1,2,6,10,12,19,88,98,101];  // Replace with actual best indices
+
+            topBestIndices.forEach((idx) => {
+                const panel = document.createElement("div");
+                panel.className = "panel";
+
+                const img = document.createElement("img");
+                img.src = `128/render/${idx}.png`;
+                img.alt = `Top ${idx}`;
+
+                panel.appendChild(img);
+                container.appendChild(panel);
+            });
+        }
+
+        function renderGrid(resolution) {
+            const container = document.getElementById("grid-container");
+            container.innerHTML = ''; // Clear grid
+
+            prompts.forEach((prompt, idx) => {
+            const panel = document.createElement("div");
+            panel.className = "panel";
+
+            const promptDiv = document.createElement("div");
+            promptDiv.className = "prompt";
+            promptDiv.textContent = `"${prompt}"`;
+
+            const img = document.createElement("img");
+            let colorSrc, sketchSrc;  // ✅ fix: declare inside loop
+
+            if (resolution === "Initial") {
+                colorSrc = `sd_best_imgs/${idx}.png`;
+                sketchSrc = null;
+            } else {
+                colorSrc = `${resolution}/render/${idx}.png`;
+                sketchSrc = `${resolution}/lines/${idx}.png`;
+            }
+
+            img.src = colorSrc;
+            img.alt = prompt;
+
+            if (sketchSrc) {
+                img.addEventListener("mouseenter", () => {
+                    img.src = sketchSrc;
+                });
+                img.addEventListener("mouseleave", () => {
+                    img.src = colorSrc;
+                });
+            }
+
+            panel.appendChild(promptDiv);
+            panel.appendChild(img);
+            container.appendChild(panel);
+        });
+
+        }
+
+        document.getElementById("resolution-buttons").addEventListener("click", (e) => {
+            if (e.target.classList.contains("res-button")) {
+                const buttons = document.querySelectorAll(".res-button");
+                buttons.forEach(btn => btn.classList.remove("active"));
+                e.target.classList.add("active");
+                const resolution = e.target.getAttribute("data-res");
+                renderGrid(resolution);
+            }
+        });
+
+        loadPrompts();
+    </script>
+
+</body>
+</html>
