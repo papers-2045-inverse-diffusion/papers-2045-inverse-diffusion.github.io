@@ -37,6 +37,13 @@
             margin-bottom: 40px;
         }
 
+        .interactive-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
         .panel {
             background-color: white;
             padding: 10px;
@@ -65,23 +72,22 @@
 
     <h1>SDS Generation Results</h1>
 
+    <!-- 7x3 Interactive Panel Rows -->
+    <h2>Interactive Visualizations</h2>
+    <div class="interactive-grid" id="interactive-grid"></div>
+
     <!-- Top Row for Best Results -->
     <h2>Highlights (128 curves)</h2>
-    <div class="grid-container" id="top-row">
-        <!-- Best images go here -->
-    </div>
+    <div class="grid-container" id="top-row"></div>
 
     <div class="controls" id="resolution-buttons">
         <button class="res-button active" data-res="128">128 curves</button>
         <button class="res-button" data-res="64">64 curves</button>
         <button class="res-button" data-res="32">32 curves</button>
         <button class="res-button" data-res="Initial">Initial Render</button>
-
     </div>
 
-    <div class="grid-container" id="grid-container">
-        <!-- Main grid will be inserted here -->
-    </div>
+    <div class="grid-container" id="grid-container"></div>
 
     <script>
         let prompts = [];
@@ -97,18 +103,13 @@
         function renderTopRow() {
             const container = document.getElementById("top-row");
             container.innerHTML = '';
-
-            // List of best {idx} for 128/_{idx}.png files
-            const topBestIndices = [0,1,2,6,10,12,19,88,98,101];  // Replace with actual best indices
-
+            const topBestIndices = [0,1,2,6,10,12,19,88,98,101];
             topBestIndices.forEach((idx) => {
                 const panel = document.createElement("div");
                 panel.className = "panel";
-
                 const img = document.createElement("img");
                 img.src = `128/render/${idx}.png`;
                 img.alt = `Top ${idx}`;
-
                 panel.appendChild(img);
                 container.appendChild(panel);
             });
@@ -116,44 +117,36 @@
 
         function renderGrid(resolution) {
             const container = document.getElementById("grid-container");
-            container.innerHTML = ''; // Clear grid
-
+            container.innerHTML = '';
             prompts.forEach((prompt, idx) => {
-            const panel = document.createElement("div");
-            panel.className = "panel";
-
-            const promptDiv = document.createElement("div");
-            promptDiv.className = "prompt";
-            promptDiv.textContent = `"${prompt}"`;
-
-            const img = document.createElement("img");
-            let colorSrc, sketchSrc;  // ✅ fix: declare inside loop
-
-            if (resolution === "Initial") {
-                colorSrc = `sd_best_imgs/${idx}.png`;
-                sketchSrc = null;
-            } else {
-                colorSrc = `${resolution}/render/${idx}.png`;
-                sketchSrc = `${resolution}/lines/${idx}.png`;
-            }
-
-            img.src = colorSrc;
-            img.alt = prompt;
-
-            if (sketchSrc) {
-                img.addEventListener("mouseenter", () => {
-                    img.src = sketchSrc;
-                });
-                img.addEventListener("mouseleave", () => {
-                    img.src = colorSrc;
-                });
-            }
-
-            panel.appendChild(promptDiv);
-            panel.appendChild(img);
-            container.appendChild(panel);
-        });
-
+                const panel = document.createElement("div");
+                panel.className = "panel";
+                const promptDiv = document.createElement("div");
+                promptDiv.className = "prompt";
+                promptDiv.textContent = `"${prompt}"`;
+                const img = document.createElement("img");
+                let colorSrc, sketchSrc;
+                if (resolution === "Initial") {
+                    colorSrc = `sd_best_imgs/${idx}.png`;
+                    sketchSrc = null;
+                } else {
+                    colorSrc = `${resolution}/render/${idx}.png`;
+                    sketchSrc = `${resolution}/lines/${idx}.png`;
+                }
+                img.src = colorSrc;
+                img.alt = prompt;
+                if (sketchSrc) {
+                    img.addEventListener("mouseenter", () => {
+                        img.src = sketchSrc;
+                    });
+                    img.addEventListener("mouseleave", () => {
+                        img.src = colorSrc;
+                    });
+                }
+                panel.appendChild(promptDiv);
+                panel.appendChild(img);
+                container.appendChild(panel);
+            });
         }
 
         document.getElementById("resolution-buttons").addEventListener("click", (e) => {
@@ -166,8 +159,85 @@
             }
         });
 
+        // === INTERACTIVE PANEL LOGIC ===
+        const visIndices = [6, 10, 12, 19, 48, 56, 115];
+        const interactiveGrid = document.getElementById("interactive-grid");
+
+        visIndices.forEach((idx, rowIdx) => {
+            const base = `vis/${idx}/`;
+
+            // Panel 1
+            const p1 = document.createElement("div");
+            p1.className = "panel";
+            const p1img = document.createElement("img");
+            p1img.id = `panel1-img-${rowIdx}`;
+            p1img.src = `${base}raw.png`;
+            p1img.setAttribute("data-idx", idx);
+            p1img.setAttribute("data-state", "0");
+            p1.appendChild(p1img);
+            interactiveGrid.appendChild(p1);
+
+            // Panel 2
+            const p2 = document.createElement("div");
+            p2.className = "panel";
+            const p2img = document.createElement("img");
+            p2img.id = `panel2-img-${rowIdx}`;
+            p2img.src = `${base}best_score_0.png`;
+            p2img.setAttribute("data-idx", idx);
+            p2img.setAttribute("data-toggle", "0");
+            p2.appendChild(p2img);
+            interactiveGrid.appendChild(p2);
+
+            // Panel 3
+            const p3 = document.createElement("div");
+            p3.className = "panel";
+            const p3img = document.createElement("img");
+            p3img.id = `panel3-img-${rowIdx}`;
+            p3img.src = `${base}best_score_noise.png`;
+            p3img.setAttribute("data-idx", idx);
+            p3img.setAttribute("data-toggle", "0");
+            p3.appendChild(p3img);
+            interactiveGrid.appendChild(p3);
+        });
+
+        document.addEventListener("keydown", (e) => {
+            visIndices.forEach((idx, rowIdx) => {
+                const base = `vis/${idx}/`;
+                const p1 = document.getElementById(`panel1-img-${rowIdx}`);
+                const p2 = document.getElementById(`panel2-img-${rowIdx}`);
+                const p3 = document.getElementById(`panel3-img-${rowIdx}`);
+
+                if (e.code === "Space") {
+                    let state = parseInt(p1.getAttribute("data-state"));
+                    const options = [`${idx}.png`, "blur_best_score.png", "skeleton_best_score.png"];
+                    state = (state + 1) % options.length;
+                    p1.src = `${base}${options[state]}`;
+                    p1.setAttribute("data-state", state.toString());
+                    e.preventDefault();
+                }
+
+                if (e.code === "ArrowLeft" || e.code === "ArrowRight") {
+                    // Panel 2 toggle
+                    let t2 = parseInt(p2.getAttribute("data-toggle"));
+                    const opts2 = ["best_score_0.png", "lines_best_score_0.png"];
+                    t2 = (t2 + 1) % opts2.length;
+                    p2.src = `${base}${opts2[t2]}`;
+                    p2.setAttribute("data-toggle", t2.toString());
+
+                    // Panel 3 toggle
+                    let t3 = parseInt(p3.getAttribute("data-toggle"));
+                    const opts3 = ["best_score_0_noise.png", "lines_best_score_0_noise.png"];
+                    t3 = (t3 + 1) % opts3.length;
+                    p3.src = `${base}${opts3[t3]}`;
+                    p3.setAttribute("data-toggle", t3.toString());
+
+                    e.preventDefault();
+                }
+            });
+        });
+
         loadPrompts();
     </script>
-
 </body>
 </html>
+ 
